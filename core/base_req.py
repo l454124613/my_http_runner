@@ -2,6 +2,7 @@
 # Author:lixuecheng
 
 from locust.clients import HttpSession, ResponseContextManager
+import json
 
 
 class MyResponse(ResponseContextManager):
@@ -16,14 +17,14 @@ class MyResponse(ResponseContextManager):
         if self.is_locust:
             super(MyResponse, self).failure(exc)
         else:
-            print(exc)
+            print('failure',exc)
 
     def success(self, exc):
         if self.is_locust:
 
             super(MyResponse, self).success()
         else:
-            print(exc)
+            print('ok',exc)
 
 
 host = 'http://172.16.32.40:8082'
@@ -66,71 +67,71 @@ v = HttpSession(host)
 """
 
 
-def run_http(h, is_locust=True):
-    header = {"Cookie": 'asdasda=123123'}
-    with h.request('get', '/webapi/api/token/gettoken?openid=f14f531c-2eef-4550-828b-0bdda49ae9dd',
-                   catch_response=True, name='getToken') as r:
-        r1 = MyResponse(r, is_locust)
-        # print(r1.json())
-        print(r1.status_code)
-        # print([k+"="+v for k,v in r1.headers.items()])
-        # try:
-        #     print(r1.request.method)
-        # except Exception as e:
-        #     print(e)
-        # try:
-        #     print(r1.request.url)
-        # except Exception as e:
-        #     print(e)
-        # try:
-        #     print(r1.request.headers)
-        # except Exception as e:
-        #     print(e)
-        # try:
-        #     print(r1.request.files)
-        # except Exception as e:
-        #     print(e)
-        # try:
-        #     print(r1.request.data)
-        # except Exception as e:
-        #     print(e)
-        # try:
-        #     print(r1.request.json)
-        # except Exception as e:
-        #     print(e)
-        # try:
-        #     print(r1.request.params)
-        # except Exception as e:
-        #     print(e)
-        # try:
-        #     print(r1.request.auth)
-        # except Exception as e:
-        #     print(e)
-        # try:
-        #     print([i for i in r1.request._cookies])
-        # except Exception as e:
-        #     print(e)
-
-        # print(r1.request)
-
-        print(r1.json())
-
-        # print(r1.content)
-        # print([r1.cookies.items()])
-        # print(r1.ok)
-        # print(r1.encoding)
-        # r1.failure('err')
-        # r1.success('ok')
-
-        # print(r1.locust_request_meta)
-        # print(r1.raise_for_status())
-        # print(r1.text)
-
-        # print(r1.reason)
-        # print(r1.elapsed)
-
-
-# run_http(v, False)
+# def run_http(h, is_locust=True):
+#     header = {"Cookie": 'asdasda=123123'}
+#     with h.request('get', '/webapi/api/token/gettoken?openid=f14f531c-2eef-4550-828b-0bdda49ae9dd',
+#                    catch_response=True, name='getToken') as r:
+#         r1 = MyResponse(r, is_locust)
+#         # print(r1.json())
+#         print(r1.status_code)
+#         # print([k+"="+v for k,v in r1.headers.items()])
+#         # try:
+#         #     print(r1.request.method)
+#         # except Exception as e:
+#         #     print(e)
+#         # try:
+#         #     print(r1.request.url)
+#         # except Exception as e:
+#         #     print(e)
+#         # try:
+#         #     print(r1.request.headers)
+#         # except Exception as e:
+#         #     print(e)
+#         # try:
+#         #     print(r1.request.files)
+#         # except Exception as e:
+#         #     print(e)
+#         # try:
+#         #     print(r1.request.data)
+#         # except Exception as e:
+#         #     print(e)
+#         # try:
+#         #     print(r1.request.json)
+#         # except Exception as e:
+#         #     print(e)
+#         # try:
+#         #     print(r1.request.params)
+#         # except Exception as e:
+#         #     print(e)
+#         # try:
+#         #     print(r1.request.auth)
+#         # except Exception as e:
+#         #     print(e)
+#         # try:
+#         #     print([i for i in r1.request._cookies])
+#         # except Exception as e:
+#         #     print(e)
+#
+#         # print(r1.request)
+#
+#         print(r1.json())
+#
+#         # print(r1.content)
+#         # print([r1.cookies.items()])
+#         # print(r1.ok)
+#         # print(r1.encoding)
+#         # r1.failure('err')
+#         # r1.success('ok')
+#
+#         # print(r1.locust_request_meta)
+#         # print(r1.raise_for_status())
+#         # print(r1.text)
+#
+#         # print(r1.reason)
+#         # print(r1.elapsed)
+#
+#
+# # run_http(v, False)
 
 
 class RunHttp:
@@ -141,16 +142,20 @@ class RunHttp:
         self.run_dict = {}
         self.order_dict = {}
         self.res_dict = {}
+        self.res_dict_json = {}
 
     def run(self):
+
         for i in range(len(self.order_dict)):
             name = self.order_dict[str(i + 1)]
-            try:
-                res = self._do_http(self.run_dict[name])
-                self.res_dict[name] = res
-                return res
-            except Exception as e:
-                print('err', e)
+            # try:
+            res = self._do_http(self.run_dict[name])
+            self.res_dict[name] = res
+            self.res_dict_json[name] = json.dumps(res)
+
+            # except Exception as e:
+            #     print('err', e)
+        return json.dumps(self.res_dict)
 
     def add_request(self, method, path, name=None, params=None, data=None, headers=None, files=None, auth=None,
                     timeout=None, allow_redirects=True, proxies=None, json=None, check=None):
@@ -163,7 +168,7 @@ class RunHttp:
         files = [] if files is None else files
         headers = {} if headers is None else headers
         params = {} if params is None else params
-        # info['name'] = name
+        info['name'] = name
         info['data'] = data
         info['files'] = files
         info['headers'] = headers
@@ -192,50 +197,54 @@ class RunHttp:
         pass
 
     @staticmethod
-    def _get_response( res):
+    def _get_response(res):
         result = {}
-        req = {'method': res.request.method, 'url': res.request.url, 'headers': res.request.headers}
+        # req = {'method': res.request.method, 'url': res.request.url, 'headers': res.request.headers}
+        req = {'method': res.request.method, 'url': res.request.url}
+        # print(type(res.request.headers))
+        req['headers'] = {k: j for k, j in res.request.headers.lower_items()}
         result['status_code'] = res.status_code
         try:
             result['json'] = res.json()
         except:
-            result['json'] = None
+            result['json'] = 'no'
         try:
             result['text'] = res.text
         except:
-            result['text'] = None
+            result['text'] = 'no'
         try:
             req['auth'] = res.request.auth
         except:
-            req['auth'] = None
+            req['auth'] = 'no'
         try:
             req['files'] = res.request.files
         except:
-            req['files'] = None
+            req['files'] = 'no'
         try:
             req['data'] = res.request.data
         except:
-            req['data'] = None
+            req['data'] = 'no'
         try:
             req['json'] = res.request.json
         except:
-            req['json'] = None
-        try:
-            req['params'] = res.request.params
-        except:
-            req['params'] = None
+            req['json'] = 'no'
+        # try:
+        #     req['params'] = res.request.params
+        # except:
+        #     req['params'] = 'no'
 
         result['status_code'] = res.status_code
-        result['headers'] = [k + "=" + j for k, j in res.headers.items()]
-        result['content'] = res.content
+        result['headers'] = {k: j for k, j in res.headers.items()}
+        result['content'] = res.content.decode('utf-8')
         result['cookies'] = res.cookies.items()
         result['ok'] = res.ok
         result['encoding'] = res.encoding
-        # result['raise_for_status()'] = res.raise_for_status()
+
         result['request_meta'] = res.locust_request_meta
         result['reason'] = res.reason
         result['request'] = req
         result['elapsed'] = res.elapsed.seconds
+        # print(result)
         return result
 
         # print(r1.json())
@@ -298,8 +307,8 @@ class RunHttp:
 
 
 print(RunHttp('http://172.16.32.40:8082', False).add_request('get',
-                                                       '/webapi/api/token/gettoken?openid=f14f531c-2eef-4550-828b-0bdda49ae9dd',
-                                                       name='test').run())
+                                                             '/webapi/api/token/gettoken?openid=f14f531c-2eef-4550-828b-0bdda49ae9dd',
+                                                             name='test').run())
 # h.add_request('get', '/webapi/api/token/gettoken?openid=f14f531c-2eef-4550-828b-0bdda49ae9dd', name='test')
 # # print(**h.run_list[0])
 # h.do_http(h.run_dict[h.order_dict['1']])
