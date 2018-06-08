@@ -17,18 +17,18 @@ class MyResponse(ResponseContextManager):
         if self.is_locust:
             super(MyResponse, self).failure(exc)
         else:
-            print('failure',exc)
+            print('failure', exc)
 
-    def success(self, exc):
+    def success(self, exc='运行成功'):
         if self.is_locust:
 
             super(MyResponse, self).success()
         else:
-            print('ok',exc)
+            print('ok', exc)
 
 
-host = 'http://172.16.32.40:8082'
-v = HttpSession(host)
+# host = 'http://172.16.32.40:8082'
+# v = HttpSession(host)
 """Constructs a :class:`Request <Request>`, prepares it and sends it.
    Returns :class:`Response <Response>` object.
 
@@ -142,7 +142,6 @@ class RunHttp:
         self.run_dict = {}
         self.order_dict = {}
         self.res_dict = {}
-        self.res_dict_json = {}
 
     def run(self):
 
@@ -151,11 +150,21 @@ class RunHttp:
             # try:
             res = self._do_http(self.run_dict[name])
             self.res_dict[name] = res
-            self.res_dict_json[name] = json.dumps(res)
 
             # except Exception as e:
             #     print('err', e)
-        return json.dumps(self.res_dict)
+
+        class DoRes:
+            def __init__(self, res):
+                self._res = res
+
+            def get_dict(self):
+                return self._res
+
+            def get_json(self):
+                return json.dumps(self._res)
+
+        return DoRes(self.res_dict)
 
     def add_request(self, method, path, name=None, params=None, data=None, headers=None, files=None, auth=None,
                     timeout=None, allow_redirects=True, proxies=None, json=None, check=None):
@@ -191,6 +200,18 @@ class RunHttp:
 
         with self.http_session.request(method=key['method'], url=key['url'], catch_response=True, **key['info']) as r:
             r1 = MyResponse(r, self.is_locust)
+            if key['check'] is None:
+                if r1.ok:
+                    r1.success()
+                else:
+                    r1.failure(r1.reason)
+            else:
+                if type(key['check']) == dict:
+                    pass
+                else:
+                    r1.failure('校验值输入有误')
+                    raise Exception('校验值输入有误')
+
             return RunHttp._get_response(r1)
 
     def analysis_res(self):
