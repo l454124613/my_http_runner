@@ -186,12 +186,13 @@ class RunHttp:
 
         with self.http_session.request(method=key['method'], url=key['url'], catch_response=True, **key['info']) as r:
             r1 = MyResponse(r, self.is_locust)
-            return self._get_response(r1)
+            return RunHttp._get_response(r1)
 
     def analysis_res(self):
         pass
 
-    def _get_response(self, res):
+    @staticmethod
+    def _get_response( res):
         result = {}
         req = {'method': res.request.method, 'url': res.request.url, 'headers': res.request.headers}
         result['status_code'] = res.status_code
@@ -296,9 +297,9 @@ class RunHttp:
         # print(r1.elapsed)
 
 
-RunHttp('http://172.16.32.40:8082', False).add_request('get',
+print(RunHttp('http://172.16.32.40:8082', False).add_request('get',
                                                        '/webapi/api/token/gettoken?openid=f14f531c-2eef-4550-828b-0bdda49ae9dd',
-                                                       name='test').run()
+                                                       name='test').run())
 # h.add_request('get', '/webapi/api/token/gettoken?openid=f14f531c-2eef-4550-828b-0bdda49ae9dd', name='test')
 # # print(**h.run_list[0])
 # h.do_http(h.run_dict[h.order_dict['1']])
