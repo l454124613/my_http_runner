@@ -3,7 +3,7 @@
 
 from locust.clients import HttpSession, ResponseContextManager
 import json
-from base_value.CatchItem import Catch
+from base_value.ResponseItem import ResponseItem
 
 
 class MyResponse(ResponseContextManager):
@@ -108,27 +108,70 @@ class RunHttp:
             print('有重复的名字', name)
         return self
 
-    def check_res(self, res, check_dict):
+    def check_res(self, res, check_items, is_dict):
 
         pass
 
-    '''
-    catch_items
-    [{name,catch,value}]
-    '''
-
-    def add_catch(self, catch_items,res):
-        for i in catch_items:
-            if type(i) == dict:
-                if i.get('name') is not None and i.get('catch') is not None and i.get('catch') in Catch and i.get('value') is not None:
-                    pass
-            else:
-                print('在抓取数据时，格式错误：', i)
-
+    def add_catch(self, catch_items):
         pass
 
     def add_check(self, check_item):
         pass
+
+    def _catch_check_res(self, item, res, content_encoding, is_check=False):
+        catch_result = None
+
+        if item.get('response_item') is not None and item.get(
+                'response_item') in ResponseItem and item.get('value') is not None:
+            if item.get('response_item') is ResponseItem.content:
+                import re
+                p = re.compile(item.get('value'))
+                catch_result = p.findall(res.content.decode(content_encoding))
+                if is_check:
+                    return len(catch_result) > 0
+
+            elif item.get('response_item') is ResponseItem.encoding:
+                catch_result = res.encoding
+                if is_check:
+                    return catch_result == item.get('value')
+            elif item.get('response_item') is ResponseItem.json:
+                pass
+            elif item.get('response_item') is ResponseItem.cookies:
+                pass
+            elif item.get('response_item') is ResponseItem.headers:
+                pass
+            elif item.get('response_item') is ResponseItem.status_code:
+                catch_result = res.status_code
+                if is_check:
+                    return catch_result == item.get('value')
+            else:
+                print('在解析数据时，发生错误：', item.get('response_item'))
+                return catch_result
+        else:
+            print('在抓取数据时，抓取项格式错误：', item)
+            return catch_result
+        return catch_result
+
+    def catch_res(self, catch_items, res, is_dict, content_encoding):
+
+        if is_dict:
+            if type(catch_items) == dict:
+                if catch_items.get('name') is not None:
+                    catch_result = self._catch_check_res(catch_items, res, content_encoding).catch()
+                    if catch_result is not None:
+                        self.catch_dict[catch_items['name']] = catch_result
+            else:
+                print('在抓取数据时，格式错误：', catch_items)
+
+        else:
+            for i in catch_items:
+                if type(i) == dict:
+                    if i.get('name') is not None:
+                        catch_result = self._catch_check_res(i, res, content_encoding).catch()
+                    if catch_result is not None:
+                        self.catch_dict[catch_items['name']] = catch_result
+                else:
+                    print('在抓取数据时，格式错误：', i)
 
     def _do_http(self, key):
         with self.http_session.request(method=key['method'], url=key['url'], catch_response=True, **key['info']) as r:
@@ -148,8 +191,11 @@ class RunHttp:
                         else:
                             r1.failure(r1.reason)
                 else:
-                    r1.failure('校验值输入格式有误')
-                    raise Exception('校验值输入格式有误')
+                    if type(key['check']) == dict:
+                        pass
+                    else:
+                        r1.failure('校验值输入格式有误')
+                        raise Exception('校验值输入格式有误')
             if key['catch'] is None:
                 pass
             else:
