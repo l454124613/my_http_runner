@@ -108,70 +108,121 @@ class RunHttp:
             print('有重复的名字', name)
         return self
 
-    def check_res(self, res, check_items, is_dict):
-
-        pass
-
     def add_catch(self, catch_items):
         pass
 
     def add_check(self, check_item):
         pass
 
-    def _catch_check_res(self, item, res, content_encoding, is_check=False):
-        catch_result = None
+    def _catch_check_res(self, item, res, content_encoding):
+        try:
 
-        if item.get('response_item') is not None and item.get(
-                'response_item') in ResponseItem and item.get('value') is not None:
-            if item.get('response_item') is ResponseItem.content:
-                import re
-                p = re.compile(item.get('value'))
-                catch_result = p.findall(res.content.decode(content_encoding))
-                if is_check:
-                    return len(catch_result) > 0
+            if item.get('response_item') is not None and item.get('response_item') in ResponseItem:
 
-            elif item.get('response_item') is ResponseItem.encoding:
-                catch_result = res.encoding
-                if is_check:
-                    return catch_result == item.get('value')
-            elif item.get('response_item') is ResponseItem.json:
-                pass
-            elif item.get('response_item') is ResponseItem.cookies:
-                pass
-            elif item.get('response_item') is ResponseItem.headers:
-                pass
-            elif item.get('response_item') is ResponseItem.status_code:
-                catch_result = res.status_code
-                if is_check:
-                    return catch_result == item.get('value')
+                if item.get('way') is not None:
+                    if item.get('response_item') is ResponseItem.content:
+                        import re
+                        p = re.compile(item.get('way'))
+                        p2 = p.findall(res.content.decode(content_encoding))
+                        if len(p2) == 1:
+                            return p2[0]
+                        elif len(p2) < 1:
+                            return None
+                        else:
+                            print("正则匹配到多个结果，默认选择第一个:", item.get('way'))
+                            return p2[0]
+                    elif item.get('response_item') is ResponseItem.json:
+                        json = res.json()
+                        return eval(item.get('way'))
+                    elif item.get('response_item') is ResponseItem.cookies:
+                        cookie = {k: j for k, j in res.cookies.items()}
+                        return eval(item.get('way'))
+
+                    elif item.get('response_item') is ResponseItem.headers:
+                        header = {k: j for k, j in res.headers.items()}
+                        return eval(item.get('way'))
+                    elif item.get('response_item') is ResponseItem.encoding:
+
+                        return res.encoding
+                    elif item.get('response_item') is ResponseItem.status_code:
+                        return res.status_code
+
+                    else:
+                        print('在提取数据时，发生错误：', item)
+                        return None
+
+                else:
+                    if item.get('response_item') is ResponseItem.encoding:
+                        return res.encoding
+                    elif item.get('response_item') is ResponseItem.status_code:
+                        return res.status_code
+                    else:
+                        print('在提取数据时，发生错误：', item)
+                        return None
+
             else:
-                print('在解析数据时，发生错误：', item.get('response_item'))
-                return catch_result
-        else:
-            print('在抓取数据时，抓取项格式错误：', item)
-            return catch_result
-        return catch_result
+                print('在抓取数据时，抓取项格式错误：', item)
+                return None
+        except Exception as e:
+            print('在解析数据时，发生错误：', e)
+            return None
 
     def catch_res(self, catch_items, res, is_dict, content_encoding):
 
         if is_dict:
-            if type(catch_items) == dict:
-                if catch_items.get('name') is not None:
-                    catch_result = self._catch_check_res(catch_items, res, content_encoding).catch()
-                    if catch_result is not None:
-                        self.catch_dict[catch_items['name']] = catch_result
-            else:
-                print('在抓取数据时，格式错误：', catch_items)
+
+            if catch_items.get('name') is not None:
+                catch_result = self._catch_check_res(catch_items, res, content_encoding)
+                if catch_result is not None:
+                    self.catch_dict[catch_items['name']] = catch_result
 
         else:
             for i in catch_items:
                 if type(i) == dict:
                     if i.get('name') is not None:
-                        catch_result = self._catch_check_res(i, res, content_encoding).catch()
+                        catch_result = self._catch_check_res(i, res, content_encoding)
                     if catch_result is not None:
-                        self.catch_dict[catch_items['name']] = catch_result
+                        self.catch_dict[i['name']] = catch_result
                 else:
                     print('在抓取数据时，格式错误：', i)
+
+    def check_res(self, check_items, res, is_dict, content_encoding):
+
+        if is_dict:
+            if check_items['value'] is not None:
+                check_result = self._catch_check_res(check_items, res, content_encoding)
+                if check_result is None:
+                    return False, '没有找到匹配的值匹配：' + str(check_items.get('value'))
+                else:
+                    r3 = (str(check_result) == str(check_items.get('value')))
+                    return r3, '获取'+check_items.get('response_item').name+',结果为：' + str(r3) + ',实际获取：' + str(check_result) + ',期望等于：' + str(
+                        check_items.get('value'))
+            else:
+                print('输入格式有误，请检查：', check_items)
+                return False, "输入格式有误，请检查：" + check_items
+
+        else:
+            is_ok = True
+            check_result = ''
+            for i in check_items:
+                if type(i) == dict:
+                    if i.get('value') is not None:
+                        r2 = self._catch_check_res(i, res, content_encoding)
+                        if r2 is None:
+                            # return False, '输入格式有误，请检查：'+i
+                            is_ok = False
+                            check_result = check_result + '\n没有找到匹配的值匹配：' + i
+                            # [{'result': False, 'value': str(check_items.get('value')), 'actual': str(r2)}]
+                        else:
+                            r3 = (str(r2) == str(i.get('value')))
+                            is_ok = (is_ok and r3)
+                            check_result += ('\n获取%s,结果为：%s,期望为：%s,实际是：%s' % (
+                                i.get('response_item').name, r3, str(i.get('value')), str(r2)))
+
+                    else:
+                        print('输入格式有误，请检查：', i)
+                        check_result = check_result + '\n输入格式有误，请检查' + i
+            return is_ok, check_result
 
     def _do_http(self, key):
         with self.http_session.request(method=key['method'], url=key['url'], catch_response=True, **key['info']) as r:
@@ -184,7 +235,12 @@ class RunHttp:
             else:
                 if type(key['check']) == list:
                     if len(key['check']) > 0:
-                        pass
+                        r2 = self.check_res(key['check'], r1, False, key['content_encoding'])
+                        if r2[0]:
+                            r1.success()
+                        else:
+                            r1.failure(r2[1])
+
                     else:
                         if r1.ok:
                             r1.success()
@@ -192,14 +248,25 @@ class RunHttp:
                             r1.failure(r1.reason)
                 else:
                     if type(key['check']) == dict:
-                        pass
+                        r2 = self.check_res(key['check'], r1, True, key['content_encoding'])
+                        if r2[0]:
+                            r1.success()
+                        else:
+                            r1.failure(r2[1])
+
                     else:
                         r1.failure('校验值输入格式有误')
                         raise Exception('校验值输入格式有误')
             if key['catch'] is None:
                 pass
             else:
-                pass
+                if type(key['catch']) == list and len(key['catch']) > 0:
+                    self.catch_res(key['catch'], r1, False, key['content_encoding'])
+                elif type(key['catch']) == dict:
+                    self.catch_res(key['catch'], r1, True, key['content_encoding'])
+                else:
+                    print("抓取数据格式不正确", key['catch'])
+
             if self.is_locust:
                 pass
             else:
@@ -264,11 +331,21 @@ class RunHttp:
         return result
 
 
-# print(RunHttp('http://172.16.32.40:8082', False).add_request('get',
-#                                                              '/webapi/api/token/gettoken?openid=f14f531c-2eef-4550-828b-0bdda49ae9dd',
-#                                                              name='test').run())
+catch = [{'name': 'test1', 'response_item': ResponseItem.json, 'way': "json['resultData']['access_token1']"}
+    , {'name': 'test2', 'response_item': ResponseItem.content, 'way': r'"access_token":"(.*?)"'}
+    , {'name': 'cookie', 'response_item': ResponseItem.cookies, 'way': '111'}
+    , {'name': 'header', 'response_item': ResponseItem.headers, 'way': 'header["Content-Type"]'}
+    , {'name': 'encoding', 'response_item': ResponseItem.encoding, 'way': 'header1["Content-Type"]'}
+    , {'name': 'status_code', 'response_item': ResponseItem.status_code, 'way': 'header["Content-Type"]'}]
+check = {'response_item': ResponseItem.status_code, 'value': '201'}
+    # , {'response_item': ResponseItem.json, 'value': '0', 'way': "json['errNo']"}]
+a = RunHttp('http://172.16.32.40:8082', False).add_request('get',
+                                                           '/webapi/api/token/gettoken?openid=f14f531c-2eef-4550-828b-0bdda49ae9dd',
+                                                           name='test', check=check).run()
+# print(a.get_all_result_dict())
+# print(a.get_catch_dict())
 # h.add_request('get', '/webapi/api/token/gettoken?openid=f14f531c-2eef-4550-828b-0bdda49ae9dd', name='test')
 # # print(**h.run_list[0])
 # h.do_http(h.run_dict[h.order_dict['1']])
-h = RunHttp('http://www.baidu.com', False).add_request('get', '/', params={'a': 'b'}).run()
-print(h.get_all_result_json())
+# h = RunHttp('http://www.baidu.com', False).add_request('get', '/', params={'a': 'b'}).run()
+# print(h.get_all_result_json())
