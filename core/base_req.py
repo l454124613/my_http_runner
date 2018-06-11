@@ -4,6 +4,7 @@
 from locust.clients import HttpSession, ResponseContextManager
 import json
 from base_value.ResponseItem import ResponseItem
+import re
 
 
 class MyResponse(ResponseContextManager):
@@ -76,6 +77,47 @@ class RunHttp:
         except Exception as e:
             print('结果解析错误', e)
 
+    def _reg_get_all(self, s):
+        if type(s) is dict:
+            return self._reg_get_dict(s)
+        elif type(s) is list:
+            return self._reg_get_list(s)
+        else:
+            return self._reg_get(s)
+
+    def _reg_get_list(self, s):
+        if len(s) > 0:
+            for i in len(s):
+                s[i] = self._reg_get_all(s[i])
+            return s
+        else:
+            return s
+
+    def _reg_get_dict(self, s):
+
+        if type(s) is dict:
+            if len(s) > 0:
+                for j, k in s.items():
+                    s[j] = self._reg_get_all(k)
+                return s
+            else:
+                return s
+
+    def _reg_get(self, s):
+        if s is None or s == [] or s == {}:
+            return s
+        else:
+            p = re.compile(r'\$\{(.*?)\}')
+            s1 = p.findall(s)
+            if len(s1) > 0:
+                for i in s1:
+                    a1 = self.catch_dict.get(i)
+                    if a1 is not None:
+                        s.replace('${%s}' % i, a1)
+                return s
+            else:
+                return s
+
     def add_request(self, method, path, name=None, params=None, data=None, headers=None, files=None, auth=None,
                     timeout=None, allow_redirects=True, proxies=None, json=None, check=None, catch=None,
                     content_encoding='utf8'):
@@ -88,14 +130,14 @@ class RunHttp:
         files = [] if files is None else files
         headers = {} if headers is None else headers
         params = {} if params is None else params
-        info['name'] = name
-        info['data'] = data
+        info['name'] = self._reg_get_all(name)
+        info['data'] = self._reg_get_all(data)
         info['files'] = files
-        info['headers'] = headers
-        info['params'] = params
+        info['headers'] = self._reg_get_all(headers)
+        info['params'] = self._reg_get_all(params)
         # info['method'] = method
         # info['path'] = path
-        info['json'] = json
+        info['json'] = self._reg_get_all(json)
         info['auth'] = auth
         info['timeout'] = timeout
         info['allow_redirects'] = allow_redirects
@@ -121,7 +163,7 @@ class RunHttp:
 
                 if item.get('way') is not None:
                     if item.get('response_item') is ResponseItem.content:
-                        import re
+
                         p = re.compile(item.get('way'))
                         p2 = p.findall(res.content.decode(content_encoding))
                         if len(p2) == 1:
@@ -195,7 +237,8 @@ class RunHttp:
                     return False, '没有找到匹配的值匹配：' + str(check_items.get('value'))
                 else:
                     r3 = (str(check_result) == str(check_items.get('value')))
-                    return r3, '获取'+check_items.get('response_item').name+',结果为：' + str(r3) + ',实际获取：' + str(check_result) + ',期望等于：' + str(
+                    return r3, '获取' + check_items.get('response_item').name + ',结果为：' + str(r3) + ',实际获取：' + str(
+                        check_result) + ',期望等于：' + str(
                         check_items.get('value'))
             else:
                 print('输入格式有误，请检查：', check_items)
@@ -279,13 +322,13 @@ class RunHttp:
 
     @staticmethod
     def _get_response(res, content_encoding='UTF-8'):
-        req = {}
+        req11 = {}
 
-        req['method'] = res.request.method
-        req['url'] = res.request.url
+        req11['method'] = res.request.method
+        req11['url'] = res.request.url
 
         # print(type(res.request.headers))
-        req['headers'] = {k: j for k, j in res.request.headers.lower_items()}
+        req11['headers'] = {k: j for k, j in res.request.headers.lower_items()}
         result = {}
         result['status_code'] = res.status_code
         try:
@@ -325,7 +368,7 @@ class RunHttp:
 
         result['request_meta'] = res.locust_request_meta
         result['reason'] = res.reason
-        result['request'] = req
+        result['request'] = req11
         result['elapsed'] = res.elapsed.seconds
 
         return result
@@ -338,7 +381,7 @@ catch = [{'name': 'test1', 'response_item': ResponseItem.json, 'way': "json['res
     , {'name': 'encoding', 'response_item': ResponseItem.encoding, 'way': 'header1["Content-Type"]'}
     , {'name': 'status_code', 'response_item': ResponseItem.status_code, 'way': 'header["Content-Type"]'}]
 check = {'response_item': ResponseItem.status_code, 'value': '201'}
-    # , {'response_item': ResponseItem.json, 'value': '0', 'way': "json['errNo']"}]
+# , {'response_item': ResponseItem.json, 'value': '0', 'way': "json['errNo']"}]
 a = RunHttp('http://172.16.32.40:8082', False).add_request('get',
                                                            '/webapi/api/token/gettoken?openid=f14f531c-2eef-4550-828b-0bdda49ae9dd',
                                                            name='test', check=check).run()
