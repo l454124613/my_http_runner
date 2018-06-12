@@ -38,8 +38,8 @@ class RunHttp:
             self.http_session = http_session
 
         self.is_locust = is_locust
-        self.run_dict = {}
-        self.order_dict = {}
+        self.run_item_list = []
+        # self.order_dict = {}
         self.res_dict = {}
         self.catch_dict = {} if catch_dict is None else catch_dict
         self._add_catch_dict = {}
@@ -47,13 +47,13 @@ class RunHttp:
 
     def run(self):
 
-        for i in range(len(self.order_dict)):
-            name = self.order_dict[str(i + 1)]
+        for i in self._generator_key():
+
             # try:
             #     self._do_http(self.run_dict[name])
             # except Exception as e:
             #     print('err', e)
-            self._do_http(self.run_dict[name])
+            self._do_http(i)
 
         class DoRes:
             def __init__(self, res, catch_res):
@@ -107,13 +107,17 @@ class RunHttp:
         if s is None or s == [] or s == {}:
             return s
         else:
+
             p = re.compile(r'\$\{(.*?)\}')
             s1 = p.findall(s)
+
             if len(s1) > 0:
                 for i in s1:
                     a1 = self.catch_dict.get(i)
+                    # print(a1)
+
                     if a1 is not None:
-                        s.replace('${%s}' % i, a1)
+                        s = s.replace('${%s}' % i, a1)
                 return s
             else:
                 return s
@@ -121,7 +125,7 @@ class RunHttp:
     def add_request(self, method, path, name=None, params=None, data=None, headers=None, files=None, auth=None,
                     timeout=None, allow_redirects=True, proxies=None, json=None, check=None, catch=None,
                     content_encoding='utf8'):
-        info = {}
+
         if name is None:
             name = path
 
@@ -130,25 +134,32 @@ class RunHttp:
         files = [] if files is None else files
         headers = {} if headers is None else headers
         params = {} if params is None else params
-        info['name'] = self._reg_get_all(name)
-        info['data'] = self._reg_get_all(data)
-        info['files'] = files
-        info['headers'] = self._reg_get_all(headers)
-        info['params'] = self._reg_get_all(params)
-        # info['method'] = method
-        # info['path'] = path
-        info['json'] = self._reg_get_all(json)
-        info['auth'] = auth
-        info['timeout'] = timeout
-        info['allow_redirects'] = allow_redirects
-        info['proxies'] = proxies
-        if self.run_dict.get(name) is None:
-            self.run_dict[name] = {'method': method, 'url': path, 'info': info, 'check': check, 'catch': catch,
-                                   'content_encoding': content_encoding}
-            self.order_dict[str(len(self.order_dict) + 1)] = name
-        else:
-            print('有重复的名字', name)
+        self.run_item_list.append(
+            dict(method=method, path=path, name=name, params=params, data=data, headers=headers, files=files, auth=auth,
+                 timeout=timeout, allow_redirects=allow_redirects, proxies=proxies, json=json, check=check, catch=catch,
+                 content_encoding=content_encoding))
+
         return self
+
+    def _generator_key(self):
+        for i in self.run_item_list:
+            info = dict()
+            info['name'] = self._reg_get_all(i.get('name'))
+            info['data'] = self._reg_get_all(i.get('data'))
+            info['files'] = i.get('files')
+            info['headers'] = self._reg_get_all(i.get('headers'))
+            info['params'] = self._reg_get_all(i.get('params'))
+            # info['method'] = method
+            # info['path'] = path
+            info['json'] = self._reg_get_all(i.get('json'))
+            info['auth'] = i.get('auth')
+            info['timeout'] = i.get('timeout')
+            info['allow_redirects'] = i.get('allow_redirects')
+            info['proxies'] = i.get('proxies')
+            yield {'method': i.get('method'), 'url': self._reg_get_all(i.get('path')), 'info': info,
+                   'check': i.get('check'),
+                   'catch': i.get('catch'),
+                   'content_encoding': i.get('content_encoding')}
 
     def add_catch(self, catch_items):
         pass
@@ -340,17 +351,17 @@ class RunHttp:
         # except:
         #     result['text'] = 'no'
         try:
-            req['auth'] = res.request.auth
+            req11['auth'] = res.request.auth
         except:
-            req['auth'] = False
+            req11['auth'] = False
         try:
-            req['files'] = res.request.files
+            req11['files'] = res.request.files
         except:
-            req['files'] = False
+            req11['files'] = False
         try:
-            req['data'] = res.request.data
+            req11['data'] = res.request.data
         except:
-            req['data'] = False
+            req11['data'] = False
         # try:
         #     req['params'] = res.request.params
         # except:
@@ -362,7 +373,14 @@ class RunHttp:
         result['encoding'] = res.encoding
         result['status_code'] = res.status_code
         result['headers'] = {k: j for k, j in res.headers.items()}
-        result['content'] = res.content.decode(content_encoding)
+
+        try:
+            result['content'] = res.content.decode(content_encoding)
+        except UnicodeDecodeError:
+            try:
+                result['content'] = res.content.decode('gbk')
+            except:
+                result['content'] = res.content.decode('utf-8', "ignore")
         result['cookies'] = {k: j for k, j in res.cookies.items()}
         result['ok'] = res.ok
 
@@ -374,18 +392,21 @@ class RunHttp:
         return result
 
 
-catch = [{'name': 'test1', 'response_item': ResponseItem.json, 'way': "json['resultData']['access_token1']"}
+catch = [{'name': 'test1', 'response_item': ResponseItem.json, 'way': "json['resultData']['access_token']"}
     , {'name': 'test2', 'response_item': ResponseItem.content, 'way': r'"access_token":"(.*?)"'}
     , {'name': 'cookie', 'response_item': ResponseItem.cookies, 'way': '111'}
     , {'name': 'header', 'response_item': ResponseItem.headers, 'way': 'header["Content-Type"]'}
     , {'name': 'encoding', 'response_item': ResponseItem.encoding, 'way': 'header1["Content-Type"]'}
     , {'name': 'status_code', 'response_item': ResponseItem.status_code, 'way': 'header["Content-Type"]'}]
-check = {'response_item': ResponseItem.status_code, 'value': '201'}
+check = {'response_item': ResponseItem.status_code, 'value': '200'}
 # , {'response_item': ResponseItem.json, 'value': '0', 'way': "json['errNo']"}]
 a = RunHttp('http://172.16.32.40:8082', False).add_request('get',
                                                            '/webapi/api/token/gettoken?openid=f14f531c-2eef-4550-828b-0bdda49ae9dd',
-                                                           name='test', check=check).run()
+                                                           name='test', check=check, catch=catch).add_request('get',
+                                                                                                              '/${test1}/${header}',
+                                                                                                              name='l1').run()
 # print(a.get_all_result_dict())
+print(a.get_all_result_json())
 # print(a.get_catch_dict())
 # h.add_request('get', '/webapi/api/token/gettoken?openid=f14f531c-2eef-4550-828b-0bdda49ae9dd', name='test')
 # # print(**h.run_list[0])
