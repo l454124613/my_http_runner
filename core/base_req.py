@@ -11,7 +11,6 @@ class MyResponse(ResponseContextManager):
 
     def __init__(self, response, is_locust=True):
         self.__dict__ = response.__dict__
-        # super(MyResponse, self)
         self.is_locust = is_locust
 
     def failure(self, exc):
@@ -264,6 +263,10 @@ class RunHttp:
                         r2 = self._catch_check_res(i, res, content_encoding)
                         if r2 is None:
                             # return False, '输入格式有误，请检查：'+i
+                            if str(i.get('value')) =='None':
+                                check_result += ('\n获取%s,结果为：%s,期望为：%s,实际是：%s' % (
+                                    i.get('response_item').name, r3, str(i.get('value')), str(r2)))
+
                             is_ok = False
                             check_result = check_result + '\n没有找到匹配的值匹配：' + i
                             # [{'result': False, 'value': str(check_items.get('value')), 'actual': str(r2)}]
@@ -333,14 +336,14 @@ class RunHttp:
 
     @staticmethod
     def _get_response(res, content_encoding='UTF-8'):
-        req11 = {}
+        req11 = dict()
 
         req11['method'] = res.request.method
         req11['url'] = res.request.url
 
         # print(type(res.request.headers))
         req11['headers'] = {k: j for k, j in res.request.headers.lower_items()}
-        result = {}
+        result = dict()
         result['status_code'] = res.status_code
         try:
             result['json'] = res.json()
@@ -391,23 +394,22 @@ class RunHttp:
 
         return result
 
-
-catch = [{'name': 'test1', 'response_item': ResponseItem.json, 'way': "json['resultData']['access_token']"}
-    , {'name': 'test2', 'response_item': ResponseItem.content, 'way': r'"access_token":"(.*?)"'}
-    , {'name': 'cookie', 'response_item': ResponseItem.cookies, 'way': '111'}
-    , {'name': 'header', 'response_item': ResponseItem.headers, 'way': 'header["Content-Type"]'}
-    , {'name': 'encoding', 'response_item': ResponseItem.encoding, 'way': 'header1["Content-Type"]'}
-    , {'name': 'status_code', 'response_item': ResponseItem.status_code, 'way': 'header["Content-Type"]'}]
-check = {'response_item': ResponseItem.status_code, 'value': '200'}
-# , {'response_item': ResponseItem.json, 'value': '0', 'way': "json['errNo']"}]
-a = RunHttp('http://172.16.32.40:8082', False).add_request('get',
-                                                           '/webapi/api/token/gettoken?openid=f14f531c-2eef-4550-828b-0bdda49ae9dd',
-                                                           name='test', check=check, catch=catch).add_request('get',
-                                                                                                              '/${test1}/${header}',
-                                                                                                              name='l1').run()
-# print(a.get_all_result_dict())
-print(a.get_all_result_json())
-# print(a.get_catch_dict())
+#
+# catch = [{'name': 'test1', 'response_item': ResponseItem.json, 'way': "json['resultData']['access_token']"}
+#     , {'name': 'test2', 'response_item': ResponseItem.content, 'way': r'"access_token":"(.*?)"'}
+#     , {'name': 'cookie', 'response_item': ResponseItem.cookies, 'way': '111'}
+#     , {'name': 'header', 'response_item': ResponseItem.headers, 'way': 'header["Content-Type"]'}
+#     , {'name': 'encoding', 'response_item': ResponseItem.encoding, 'way': 'header1["Content-Type"]'}
+#     , {'name': 'status_code', 'response_item': ResponseItem.status_code, 'way': 'header["Content-Type"]'}]
+# check = [{'response_item': ResponseItem.status_code, 'value': '200'}
+# , {'response_item': ResponseItem.json, 'value': '0', 'way': "json['errNo1']"}]
+# a = RunHttp('http://172.16.32.40:8082', False).add_request('get',
+#                                                            '/webapi/api/token/gettoken?openid=f14f531c-2eef-4550-828b-0bdda49ae9dd',
+#                                                            name='test', check=check, catch=catch).run()
+# #.add_request('get','/${test1}/${header}',name='l1')
+# # print(a.get_all_result_dict())
+# print(a.get_all_result_json())
+# # print(a.get_catch_dict())
 # h.add_request('get', '/webapi/api/token/gettoken?openid=f14f531c-2eef-4550-828b-0bdda49ae9dd', name='test')
 # # print(**h.run_list[0])
 # h.do_http(h.run_dict[h.order_dict['1']])
