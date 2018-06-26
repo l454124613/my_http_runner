@@ -4,7 +4,7 @@
 
 import os
 import sys
-from locust import HttpLocust, TaskSet, task
+from locust import HttpLocust, TaskSet, task,main
 
 sys.path.append(r'E:\pytest\my_http_runner')
 from core.base_req import RunHttp
