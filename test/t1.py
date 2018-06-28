@@ -49,28 +49,34 @@ def fan(a):
 
 async def main():
     # cc = C()
-    bb=B()
-    l = [i for i in range(100)]
-    pool = concurrent.futures.ProcessPoolExecutor()
+    # bb=B()
+    # l = [i for i in range(100)]
+    # pool = concurrent.futures.ProcessPoolExecutor()
     loop = asyncio.get_event_loop()
-    a=time.time()
-    print('start_time:',a)
-    for _ in range(30):
+    # a=time.time()
+    # print('start_time:',a)
+    # for _ in range(100):
 
-        res = await  loop.run_in_executor(pool, bb.req, 'http://172.16.32.40:8082', '/webapi/api/token/gettoken?openid=f14f531c-2eef-4550-828b-0bdda49ae9dd')
+        # res = await  loop.run_in_executor(pool, bb.req, 'http://172.16.32.40:8082', '/webapi/api/token/gettoken?openid=f14f531c-2eef-4550-828b-0bdda49ae9dd')
+        # res = await  loop.run_in_executor(pool, time.sleep, 0.1)
+    res = await  loop.run_in_executor(None, time.sleep, 0.1)
 
         # res = await  loop.run_in_executor(None, cc.ppp, l.pop())
         # fan(res)
-        print(res.status_code,time.time()-a)
-    pool.shutdown()
-    print(time.time()-a,1)
+        # print(res.status_code,time.time()-a)
+    # pool.shutdown()
+    # print(time.time()-a,1)
+
+# async  def aa():
+#     await main()
 
 
 if __name__ == '__main__':
     print(os.getpid())
     st = time.time()
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    tasks=[main() for _ in range(200)]
+    loop.run_until_complete(asyncio.wait(tasks))
     print(time.time() - st)
     loop.close()
 
