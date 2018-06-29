@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 # Author:lixuecheng
 
-from multiprocessing import Pool, cpu_count, Queue, freeze_support
+from multiprocessing import Pool, cpu_count, Queue
 import os
 
 

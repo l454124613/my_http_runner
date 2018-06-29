@@ -5,6 +5,7 @@ from locust.clients import HttpSession, ResponseContextManager
 import json
 from base_value.ResponseItem import ResponseItem
 import re
+from locust.main import main
 
 
 class MyResponse(ResponseContextManager):
